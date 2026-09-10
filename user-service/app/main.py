@@ -139,3 +139,5 @@ def health_check() -> dict[str, str]:
         "status": "healthy",
         "service": "user-service",
     }
+
+    # Triggering CI pipeline - Week 08 practical
