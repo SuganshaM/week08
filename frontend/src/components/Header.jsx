@@ -43,7 +43,7 @@ const Header = () => {
             fontWeight: 600,
           }}
         >
-          KoalaTech University
+          KoalaTech University v2 for 9.3C
         </Typography>
 
         <Box
