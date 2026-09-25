@@ -70,7 +70,7 @@ jobs:
       - name: Terraform init
         run: |
           terraform init \
-            -backend-config="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
             -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=tfstate" \
             -backend-config="key=week08.tfstate"
@@ -84,7 +84,7 @@ jobs:
             -input=false \
             -var="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
             -var="acr_name=${{ vars.ACR_NAME }}" \
-            -var="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -var="storage_account_name=${{ vars.STORAGE_ACCOUNT_NAME }}" \
             -var="aks_cluster_name=${{ vars.AKS_CLUSTER_NAME }}" \
             -var="aks_dns_prefix=${{ vars.AKS_DNS_PREFIX }}" \
             -out=tfplan
@@ -130,7 +130,7 @@ jobs:
       - name: Terraform init
         run: |
           terraform init \
-            -backend-config="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
             -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=tfstate" \
             -backend-config="key=week08.tfstate"
@@ -142,6 +142,6 @@ jobs:
             -auto-approve \
             -var="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
             -var="acr_name=${{ vars.ACR_NAME }}" \
-            -var="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -var="storage_account_name=${{ vars.STORAGE_ACCOUNT_NAME }}" \
             -var="aks_cluster_name=${{ vars.AKS_CLUSTER_NAME }}" \
             -var="aks_dns_prefix=${{ vars.AKS_DNS_PREFIX }}"
