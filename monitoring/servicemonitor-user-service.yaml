@@ -1,0 +1,47 @@
+# Task 10.2D - tells the kube-prometheus-stack Prometheus instance to
+# scrape user-service's /metrics endpoint (exposed via
+# prometheus-fastapi-instrumentator, see user-service/app/main.py) in
+# both the staging and production namespaces.
+#
+# Applied by .github/workflows/05-deploy-monitoring.yml after the
+# kube-prometheus-stack Helm chart has installed the ServiceMonitor CRD.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: user-service
+  namespace: staging
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - staging
+  selector:
+    matchLabels:
+      monitoring: enabled
+      app: user-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: user-service
+  namespace: production
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - production
+  selector:
+    matchLabels:
+      monitoring: enabled
+      app: user-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

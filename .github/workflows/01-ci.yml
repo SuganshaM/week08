@@ -160,6 +160,36 @@ jobs:
             -t ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }} \
             ./${{ matrix.service }}
 
+      # =========================================================
+      # Security Scanning (Task 10.2D)
+      # =========================================================
+      # Runs after build, before push, so a vulnerable image is caught
+      # while it only exists on the runner and hasn't reached the
+      # registry or a deployable namespace yet. Findings are uploaded
+      # as job summaries/SARIF for review; the pipeline does not block
+      # on CVEs (continue-on-error) since Docker Scout's Basic tier is
+      # advisory here rather than a hard release gate - the requirement
+      # is to review and remediate, not to auto-fail every CVE.
+      - name: Docker Scout - CVE scan
+        id: docker-scout
+        uses: docker/scout-action@v1
+        continue-on-error: true
+        with:
+          command: cves
+          image: ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }}
+          only-severities: critical,high
+          sarif-file: scout-${{ matrix.image }}.sarif.json
+          summary: true
+
+      - name: Upload Docker Scout results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-scout-${{ matrix.image }}
+          path: scout-${{ matrix.image }}.sarif.json
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Push Docker image with commit SHA
         run: |
           docker push \

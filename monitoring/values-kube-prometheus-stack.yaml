@@ -1,0 +1,48 @@
+# Task 10.2D - values for the prometheus-community/kube-prometheus-stack
+# Helm chart, sized down for a 3-node student AKS cluster that is already
+# running staging + production PostgreSQL workloads.
+#
+# Installs: Prometheus (+ kube-state-metrics + node-exporter for
+# Kubernetes/infrastructure metrics) and Grafana (dashboards), and
+# registers the ServiceMonitor/PodMonitor CRDs our own manifests use.
+
+grafana:
+  adminPassword: "" # supplied at install time via --set from a GitHub secret
+  service:
+    type: LoadBalancer
+  defaultDashboardsEnabled: true
+  # Auto-load any ConfigMap in the cluster labelled grafana_dashboard: "1"
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+  persistence:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+    # Pick up ServiceMonitors from any namespace with the `release: monitoring`
+    # label, not just kube-prometheus-stack's own namespace, so
+    # monitoring/servicemonitor-user-service.yaml (in staging/production) is found.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+    storageSpec: {} # no PVC - metrics are disposable for this practical
+
+alertmanager:
+  enabled: false # out of scope for this task; keeps the footprint small
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true

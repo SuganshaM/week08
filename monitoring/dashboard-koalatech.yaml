@@ -1,0 +1,100 @@
+# Task 10.2D - a starter operational dashboard covering both
+# infrastructure metrics (pod CPU/memory, restarts, via kube-state-metrics
+# and cAdvisor) and application metrics (HTTP request rate/latency from
+# user-service's /metrics, via the ServiceMonitor in this same folder).
+#
+# Apply with: kubectl apply -f monitoring/dashboard-koalatech.yaml
+# The kube-prometheus-stack Grafana sidecar (see values file, label
+# grafana_dashboard: "1") picks this up automatically - no manual
+# import needed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-koalatech
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  koalatech-overview.json: |
+    {
+      "title": "KoalaTech University - Overview",
+      "uid": "koalatech-overview",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pod CPU usage (staging vs production)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"staging|production\", container!=\"\"}[5m])) by (namespace, pod)",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Pod memory usage (staging vs production)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=~\"staging|production\", container!=\"\"}) by (namespace, pod)",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Pod restarts",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"staging|production\"}[15m])) by (namespace, pod)",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "user-service HTTP request rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"user-service\"}[5m])) by (namespace, handler, status)",
+              "legendFormat": "{{namespace}} {{handler}} [{{status}}]"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "user-service p95 request latency",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"user-service\"}[5m])) by (le, namespace, handler))",
+              "legendFormat": "{{namespace}} {{handler}}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Ready pods per deployment",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=~\"staging|production\"}",
+              "legendFormat": "{{namespace}}/{{deployment}}"
+            }
+          ]
+        }
+      ]
+    }

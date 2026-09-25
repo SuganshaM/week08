@@ -1,0 +1,137 @@
+name: 00 - Terraform
+
+# Runs early in the pipeline, independent of the application build, since
+# infrastructure changes (e.g. this task's new Log Analytics workspace and
+# AKS monitoring add-on) are a separate concern from shipping application
+# code. It is triggered the same way as CI so that infrastructure drift is
+# caught on every push, and applied automatically once changes reach main.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - ".github/workflows/00-terraform.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: terraform
+
+jobs:
+  # =========================================================
+  # Validate + Plan (always runs - safe, read-only)
+  # =========================================================
+  terraform-plan:
+    name: Terraform Validate & Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # The tfstate container must exist before `terraform init` can use it
+      # as a backend. Creating it here (idempotent) avoids a manual
+      # chicken-and-egg step for the storage account that already holds it.
+      - name: Ensure remote state container exists
+        run: |
+          az storage container create \
+            --name tfstate \
+            --account-name ${{ vars.TF_STATE_STORAGE_ACCOUNT }} \
+            --auth-mode login
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=week08.tfstate"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: |
+          terraform plan \
+            -input=false \
+            -var="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -var="acr_name=${{ vars.ACR_NAME }}" \
+            -var="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -var="aks_cluster_name=${{ vars.AKS_CLUSTER_NAME }}" \
+            -var="aks_dns_prefix=${{ vars.AKS_DNS_PREFIX }}" \
+            -out=tfplan
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
+          retention-days: 5
+
+  # =========================================================
+  # Apply (only on push to main, after a successful plan)
+  # =========================================================
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=week08.tfstate"
+
+      - name: Terraform apply
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            -var="resource_group_name=${{ vars.AKS_RESOURCE_GROUP }}" \
+            -var="acr_name=${{ vars.ACR_NAME }}" \
+            -var="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -var="aks_cluster_name=${{ vars.AKS_CLUSTER_NAME }}" \
+            -var="aks_dns_prefix=${{ vars.AKS_DNS_PREFIX }}"

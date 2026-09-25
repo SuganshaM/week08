@@ -67,9 +67,16 @@ kind: Service
 metadata:
   name: user-service
   namespace: production
+  # Monitoring and Observability (Task 10.2D): label + named port let the
+  # Prometheus ServiceMonitor (monitoring/servicemonitor-user-service.yaml)
+  # find this Service and scrape its /metrics endpoint.
+  labels:
+    app: user-service
+    monitoring: enabled
 spec:
   selector:
     app: user-service
   ports:
-    - port: 8000
+    - name: http
+      port: 8000
       targetPort: 8000

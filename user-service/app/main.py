@@ -4,6 +4,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -118,6 +119,14 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+
+
+# Monitoring and Observability (Task 10.2D): exposes request-count,
+# latency and in-progress-request metrics at /metrics in Prometheus
+# text format, so Prometheus can scrape application-level metrics
+# for this service rather than only cluster/pod-level resource
+# metrics from kube-state-metrics and cAdvisor.
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.get(
