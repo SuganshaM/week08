@@ -177,7 +177,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker Scout - CVE scan
-      - name: Docker Scout - CVE scan
         id: docker-scout
         uses: docker/scout-action@v1
         continue-on-error: true
