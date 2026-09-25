@@ -1,10 +1,5 @@
 name: 00 - Terraform
 
-# Runs early in the pipeline, independent of the application build, since
-# infrastructure changes (e.g. this task's new Log Analytics workspace and
-# AKS monitoring add-on) are a separate concern from shipping application
-# code. It is triggered the same way as CI so that infrastructure drift is
-# caught on every push, and applied automatically once changes reach main.
 on:
   push:
     branches:
@@ -27,9 +22,7 @@ defaults:
     working-directory: terraform
 
 jobs:
-  # =========================================================
   # Validate + Plan (always runs - safe, read-only)
-  # =========================================================
   terraform-plan:
     name: Terraform Validate & Plan
     runs-on: ubuntu-latest
@@ -53,10 +46,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # The tfstate container must exist before `terraform init` can use it
-      # as a backend. Creating it here (idempotent) avoids a manual
-      # chicken-and-egg step for the storage account that already holds it.
-      - name: Ensure remote state container exists
+       - name: Ensure remote state container exists
         run: |
           az storage container create \
             --name tfstate \
@@ -96,9 +86,7 @@ jobs:
           path: terraform/tfplan
           retention-days: 5
 
-  # =========================================================
   # Apply (only on push to main, after a successful plan)
-  # =========================================================
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
