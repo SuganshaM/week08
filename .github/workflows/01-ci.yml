@@ -170,6 +170,13 @@ jobs:
       # on CVEs (continue-on-error) since Docker Scout's Basic tier is
       # advisory here rather than a hard release gate - the requirement
       # is to review and remediate, not to auto-fail every CVE.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker Scout - CVE scan
       - name: Docker Scout - CVE scan
         id: docker-scout
         uses: docker/scout-action@v1
